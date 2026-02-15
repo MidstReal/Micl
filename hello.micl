@@ -1,0 +1,5 @@
+VARS:
+    var x = "Hello, World!\n"
+START:
+    printv x
+end
