@@ -18,7 +18,7 @@ int main()
     if (in.is_open() && out.is_open())
     {
         string command;
-        string arg1, arg2, arg3;
+        string arg1, arg2, arg3, arg4, arg5;
 
         out << "global _start" << endl;
         out << endl;
@@ -44,17 +44,42 @@ int main()
                 }
 
             }
-            else if (command == "mov") {
-                iss >> arg1 >> arg2;
-                out << "mov " << arg1 << ", " << arg2 << endl;
+            else if (command == "if") {
+                iss >> arg1 >> arg2 >> arg3 >> arg4 >> arg5;
+                out << "cmp " << arg1 << ", " << arg3 << endl;
+                if (arg2 == "=="){
+                    if(arg4 == "=>"){
+                        out << "je " << arg5 << endl;
+                    } else cout << "warning: missing operator '=>' in 'if'" << endl;
+                } else if (arg2 == "!="){
+                    if(arg4 == "=>"){
+                        out << "jne " << arg5 << endl;
+                    } else cout << "warning: missing operator '=>' in 'if'" << endl;
+                } else if (arg2 == "<"){
+                    if(arg4 == "=>"){
+                        out << "jb " << arg5 << endl;
+                    } else cout << "warning: missing operator '=>' in 'if'" << endl;
+                } else if (arg2 == ">"){
+                    if(arg4 == "=>"){
+                        out << "ja " << arg5 << endl;
+                    } else cout << "warning: missing operator '=>' in 'if'" << endl;
+                } else if (arg2 == "<="){
+                    if(arg4 == "=>"){
+                        out << "jbe " << arg5 << endl;
+                    } else cout << "warning: missing operator '=>' in 'if'" << endl;
+                } else if (arg2 == ">="){
+                    if(arg4 == "=>"){
+                        out << "jae " << arg5 << endl;
+                    } else cout << "warning: missing operator '=>' in 'if'" << endl;
+                }
             }
-            else if (command == "movv") {
-                iss >> arg1 >> arg2;
-                out << "mov " << "[" << arg1 << "]" << ", " << "[" << arg2 << "]" << endl;
-            }
-            else if (command == "returnv") {
+            else if (command == "jump") {
                 iss >> arg1;
-                out << "mov " << "rdi, " << "[" << arg1 << "]" << endl;
+                out << "jmp " << arg1 << endl;
+            }
+            else if (command == "call") {
+                iss >> arg1;
+                out << "call " << arg1 << endl;
             }
             else if (command == "return") {
                 iss >> arg1;
@@ -86,6 +111,22 @@ int main()
                 out << "mov rdx, " << arg1 << "_len" << endl;
                 out << "syscall" << endl;
             }
+            else if (command == "readv") {
+                iss >> arg1;
+                out << "mov rsi, " << arg1 << endl;
+                out << "mov rax, 0" << endl;
+                out << "mov rdi, 0" << endl;
+                out << "mov rdx, 100" << endl;
+                out << "syscall" << endl;
+            }
+            else if (command == "readvbyte") {
+                iss >> arg1 >> arg2;
+                out << "mov rsi, " << arg1 << endl;
+                out << "mov rax, 0" << endl;
+                out << "mov rdi, 0" << endl;
+                out << "mov rdx, " << arg2 << endl;
+                out << "syscall" << endl;
+            }
             else if (command == "printvbyte") {
                 iss >> arg1 >> arg2;
                 out << "mov rsi, " << arg1 << endl;
@@ -94,8 +135,27 @@ int main()
                 out << "mov rdx, " << arg2 << endl;
                 out << "syscall" << endl;
             }
+            else if (command == "POINT") {
+                iss >> arg1;
+                out << arg1 << ":" << endl;
+            }
+            else if (command == "FUNC") {
+                iss >> arg1;
+                out << arg1 << ":" << endl;
+            }
+            else if (command == "term") {
+                iss >> arg1;
+                out << "ret" << endl;
+            }
+            else if (command == "syscall") {
+                iss >> arg1;
+                out << "syscall" << endl;
+            }
             else if (command == "VARS:") {
                 out << "section .data" << endl;
+            }
+            else if (command == "BSS:") {
+                out << "section .bss" << endl;
             }
             else if (command == "START:") {
                 out << "section .text" << endl;
