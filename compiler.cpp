@@ -97,7 +97,7 @@ int main()
 
             else if (command == "if") {
                 iss >> arg0 >> arg1 >> arg2 >> arg3 >> arg4 >> arg5;
-                out << "cmp "<< arg0 << arg1 << ", " << arg3 << endl;
+                out << "cmp "<< arg0 << " " << arg1 << ", " << arg3 << endl;
                 if (arg2 == "=="){
                     if(arg4 == "=>"){
                         out << "je " << arg5 << endl;
