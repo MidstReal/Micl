@@ -18,7 +18,7 @@ int main()
     if (in.is_open() && out.is_open())
     {
         string command;
-        string arg1, arg2, arg3, arg4, arg5;
+        string arg0, arg1, arg2, arg3, arg4, arg5;
 
         out << "global _start" << endl;
         out << endl;
@@ -29,24 +29,75 @@ int main()
 
             istringstream iss(line);
             iss >> command;
+            if (command == "//") continue;
+            else if (command == ";") continue;
 
-            if (command == "f"){
+
+            else if (command == "asm:"){
+                string asm_line;
+                getline(iss, asm_line);
+                size_t start = asm_line.find_first_not_of(" \t");
+                if (start != string::npos) {
+                    out << asm_line.substr(start) << endl;
+                }
+            }
+            else if (command == "f") {
                 iss >> arg1 >> arg2 >> arg3;
 
-                if (arg2 == "=") out << "mov " << arg1 << ", " << arg3 << endl;
-                else{
-                    out << "mov rax, " << "[" << arg1 << "]" << endl;
+                auto isConstant = [](const string& s) {
+                    if (s.empty()) return false;
+                    return isdigit(s[0]) || (s[0] == '-' && s.size() > 1 && isdigit(s[1]));
+                };
 
-                    if (arg2 == "+=") out << "add rax, " << arg3 << endl;
-                    else if (arg2 == "-=") out << "sub rax, " << arg3 << endl;
-
-                    out << "mov " << "[" << arg1 << "]" << ", rax" << endl;
+                if (arg2 == "=") {
+                    if (isConstant(arg3)) {
+                        out << "mov qword [" << arg1 << "], " << arg3 << endl;
+                    } else {
+                        out << "mov rax, [" << arg3 << "]" << endl;
+                        out << "mov [" << arg1 << "], rax" << endl;
+                    }
                 }
+                else {
+                    out << "mov rax, [" << arg1 << "]" << endl;
 
+                    if (arg2 == "+=") {
+                        if (isConstant(arg3)) out << "add rax, " << arg3 << endl;
+                        else out << "add rax, [" << arg3 << "]" << endl;
+                    }
+                    else if (arg2 == "-=") {
+                        if (isConstant(arg3)) out << "sub rax, " << arg3 << endl;
+                        else out << "sub rax, [" << arg3 << "]" << endl;
+                    }
+                    else if (arg2 == "*=") {
+                        if (isConstant(arg3)) {
+                            out << "imul rax, " << arg3 << endl;
+                        } else {
+                            out << "imul rax, [" << arg3 << "]" << endl;
+                        }
+                    }
+                    else if (arg2 == "/=" || arg2 == "%=") {
+                        out << "xor rdx, rdx" << endl;
+                        if (isConstant(arg3)) {
+                            out << "mov rbx, " << arg3 << endl;
+                            out << "div rbx" << endl;
+                        } else {
+                            out << "div qword [" << arg3 << "]" << endl;
+                        }
+                        if (arg2 == "%=") out << "mov rax, rdx" << endl;
+                    }
+                    else if (arg2 == "tonum") {
+                        out << "sub rax, '0'" << endl;
+                    }
+                    else if (arg2 == "tochar") {
+                        out << "add rax, '0'" << endl;
+                    }
+                    out << "mov [" << arg1 << "], rax" << endl;
+                }
             }
+
             else if (command == "if") {
-                iss >> arg1 >> arg2 >> arg3 >> arg4 >> arg5;
-                out << "cmp " << arg1 << ", " << arg3 << endl;
+                iss >> arg0 >> arg1 >> arg2 >> arg3 >> arg4 >> arg5;
+                out << "cmp "<< arg0 << arg1 << ", " << arg3 << endl;
                 if (arg2 == "=="){
                     if(arg4 == "=>"){
                         out << "je " << arg5 << endl;
@@ -85,22 +136,67 @@ int main()
                 iss >> arg1;
                 out << "mov " << "rdi, " << arg1 << endl;
             }
-            else if (command == "var") {
-                string arg1, arg2, arg3;
-                iss >> arg1 >> arg2;
-                if (arg2 == "=") {
-                    getline(iss, arg3);
-                    if (!arg3.empty() && arg3[0] == ' ') arg3 = arg3.substr(1);
+            else if (command == "var:") {
+                string type, name, value, len_spec;
+                iss >> type >> name;
+
+                string next_token;
+                iss >> next_token;
+
+                if (next_token == "=") {
+                    getline(iss, value);
+                    if (!value.empty() && value[0] == ' ') value = value.substr(1);
+
                     size_t pos = 0;
-                    while ((pos = arg3.find("\\n", pos)) != string::npos) {
-                        arg3.replace(pos, 2, "\", 10, \"");
+                    while ((pos = value.find("\\n", pos)) != string::npos) {
+                        value.replace(pos, 2, "\", 10, \"");
                         pos += 7;
                     }
-                    out << arg1 << " db " << arg3 << endl;
-                    out << arg1 << "_len equ $ - " << arg1 << endl;
-                } else {
-                    out << arg1 << " db 0" << endl;
-                    out << arg1 << "_len equ 1" << endl;
+                    pos = 0;
+                    while ((pos = value.find("\\t", pos)) != string::npos) {
+                        value.replace(pos, 2, "\", 9, \"");
+                        pos += 7;
+                    }
+                    pos = 0;
+                    while ((pos = value.find("\\r", pos)) != string::npos) {
+                        value.replace(pos, 2, "\", 13, \"");
+                        pos += 7;
+                    }
+                    pos = 0;
+                    while ((pos = value.find("\\\\", pos)) != string::npos) {
+                        value.replace(pos, 2, "\", 92, \"");
+                        pos += 7;
+                    }
+                    pos = 0;
+                    while ((pos = value.find("\\\"", pos)) != string::npos) {
+                        value.replace(pos, 2, "\", 34, \"");
+                        pos += 7;
+                    }
+
+                    if (type == "1b") out << name << " db " << value << endl;
+                    else if (type == "2b") out << name << " dw " << value << endl;
+                    else if (type == "4b") out << name << " dd " << value << endl;
+                    else if (type == "8b") out << name << " dq " << value << endl;
+                    else cout << "warning: unknown type '" << type << "'" << endl;
+
+                    if (value.find('"') != string::npos) {
+                        out << name << "_len equ $ - " << name << endl;
+                    }
+                }
+                else {
+                    string len_str = next_token;
+                    if (len_str.empty() || !isdigit(len_str[0])) {
+                        len_str = "1";
+                    }
+
+                    if (type == "1b") out << name << " db 0" << endl;
+                    else if (type == "2b") out << name << " dw 0" << endl;
+                    else if (type == "4b") out << name << " dd 0" << endl;
+                    else if (type == "8b") out << name << " dq 0" << endl;
+                    else cout << "warning: unknown type '" << type << "'" << endl;
+
+
+                    out << name << "_len equ " << len_str << endl;
                 }
             }
             else if (command == "printv") {
