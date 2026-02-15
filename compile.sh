@@ -1,3 +1,3 @@
 ./compiler
-nasm -f elf64 test.asm -o test.o
-ld test.o -o programm
+nasm -f elf64 temp.asm -o temp.o
+ld temp.o -o programm
